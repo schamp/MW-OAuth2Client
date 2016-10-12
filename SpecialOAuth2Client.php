@@ -142,10 +142,11 @@ class SpecialOAuth2Client extends SpecialPage {
 	protected function _userHandling( $response ) {
 		global $wgOAuth2Client, $wgAuth, $wgRequest;
 
-		$username = $response['user'][$wgOAuth2Client['configuration']['username']];
-		$email = $response['user'][$wgOAuth2Client['configuration']['email']];
+		$response = array_key_exists('user', $response) ? $response['user'] : $response;
 
-		$user = User::newFromName($username, 'creatable');
+		$username = $response[$wgOAuth2Client['configuration']['username']];
+		$email = $response[$wgOAuth2Client['configuration']['email']];
+
 		if (!$user) {
 			throw new MWException('Could not create user with username:' . $username);
 			die();
