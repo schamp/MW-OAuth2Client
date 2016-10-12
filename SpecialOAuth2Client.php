@@ -147,8 +147,9 @@ class SpecialOAuth2Client extends SpecialPage {
 		$username = $response[$wgOAuth2Client['configuration']['username']];
 		$email = $response[$wgOAuth2Client['configuration']['email']];
 
+		$user = User::newFromName($email);
 		if (!$user) {
-			throw new MWException('Could not create user with username:' . $username);
+			throw new MWException('Could not create user with email:' . $email);
 			die();
 		}
 		$user->setRealName($username);
@@ -157,9 +158,8 @@ class SpecialOAuth2Client extends SpecialPage {
 		if ( !( $user instanceof User && $user->getId() ) ) {
 			$user->addToDatabase();
 			// MediaWiki recommends below code instead of addToDatabase to create user but it seems to fail.
-			// $authManager = MediaWiki\Auth\AuthManager::singleton();
-			// $authManager->autoCreateUser( $user, MediaWiki\Auth\AuthManager::AUTOCREATE_SOURCE_SESSION );
-			$user->confirmEmail();
+			$authManager = MediaWiki\Auth\AuthManager::singleton();
+			$authManager->autoCreateUser( $user, MediaWiki\Auth\AuthManager::AUTOCREATE_SOURCE_SESSION );
 		}
 		$user->setToken();
 
