@@ -163,6 +163,25 @@ class SpecialOAuth2Client extends SpecialPage {
 		}
 		$user->setToken();
 
+		// Add to Admin if `admin_trigger` criteria matches
+		if (array_key_exists('admin_trigger', $wgOAuth2Client['configuration'])) {
+			$aKey = array_keys($wgOAuth2Client['configuration']['admin_trigger'])[0];
+			$aVal = $wgOAuth2Client['configuration']['admin_trigger'][$aKey];
+			if ($response[$aKey] == $aVal) {
+				$user->addGroup('sysop');
+			}
+		}
+
+		// Add to user groups
+		if (array_key_exists('group_map', $wgOAuth2Client['configuration'])) {
+			$groupMap = $wgOAuth2Client['configuration']['group_map'];
+			foreach ($wgOAuth2Client['configuration']['group_map'] as $gKey => $gVal) {
+				if ($response[$gKey] === true) {
+					$user->addGroup($gVal);
+				}
+			}
+		}
+
 		// Setup the session
 		$wgRequest->getSession()->persist();
 		$user->setCookies();
