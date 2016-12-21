@@ -147,6 +147,8 @@ class SpecialOAuth2Client extends SpecialPage {
 		$username = $response[$wgOAuth2Client['configuration']['username']];
 		$email = $response[$wgOAuth2Client['configuration']['email']];
 
+		// FIXME: check if user is allowed to create account
+
 		$user = User::newFromName($email);
 		if (!$user) {
 			throw new MWException('Could not create user with email:' . $email);
@@ -172,12 +174,47 @@ class SpecialOAuth2Client extends SpecialPage {
 			}
 		}
 
-		// Add to user groups
+		// Add to user groups via map, if provided
 		if (array_key_exists('group_map', $wgOAuth2Client['configuration'])) {
 			$groupMap = $wgOAuth2Client['configuration']['group_map'];
 			foreach ($wgOAuth2Client['configuration']['group_map'] as $gKey => $gVal) {
 				if ($response[$gKey] === true) {
 					$user->addGroup($gVal);
+				}
+			}
+		}
+
+		// Add user to groups via group key, if provided
+		// update the groups to match the groups from oauth
+		// 'groups' must be provided
+		// if 'group_prefix' is not provided, 'oauth_' will be used by default
+		if (array_key_exists('groups', $wgOAuth2Client['configuration'])) {
+			$group_prefix = 'oauth_';
+			if (array_key_exists('group_prefix', $wgOAuth2Client['configuration'])) {
+				$group_prefix = $wgOAuth2Client['configuration']['group_prefix'];
+			}
+			if (!$group_prefix) {
+				throw new MWException("\$wgOAuth2Client['configuration']['group_prefix'] must not be empty!");
+			}
+
+			$add_prefix = function($s) use ($group_prefix) {
+				return $group_prefix.$s;
+			};
+			$oauth_groups = array_map($add_prefix, $response[$wgOAuth2Client['configuration']['groups']]);
+
+			$existing_groups = $user->getGroups();
+
+			# remove groups that are no longer valid
+			foreach ($existing_groups as $group) {
+				if (strpos($group, $group_prefix, 0) === 0 && !in_array($group, $oauth_groups, true)) {
+					$user->removeGroup($group);
+				}
+			}
+
+			# add missing groups
+			foreach ($oauth_groups as $group) {
+				if (!in_array($group, $existing_groups, true)) {
+					$user->addGroup($group);
 				}
 			}
 		}
